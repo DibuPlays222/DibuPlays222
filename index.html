@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Race Master - Ultra Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: #050505;
+            user-select: none; -webkit-user-select: none;
+            touch-action: none; font-family: 'Orbitron', sans-serif;
+        }
+        
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        .clickable { pointer-events: auto; cursor: pointer; }
+        
+        .glass-panel {
+            background: rgba(15, 15, 25, 0.85);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 40px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 85%;
+            max-width: 400px;
+        }
+
+        .neon-glow {
+            text-shadow: 0 0 10px rgba(251, 191, 36, 0.8), 0 0 20px rgba(251, 191, 36, 0.4);
+        }
+        
+        .big-yellow-btn {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #000;
+            padding: 20px 40px;
+            border-radius: 20px;
+            font-size: 24px;
+            font-weight: 900;
+            border: none;
+            box-shadow: 0 10px 0 #b45309, 0 0 20px rgba(245, 158, 11, 0.4);
+            transition: all 0.1s;
+            width: 100%;
+        }
+        
+        .big-yellow-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 4px 0 #b45309, 0 0 10px rgba(245, 158, 11, 0.2);
+        }
+        
+        .move-controls {
+            position: absolute;
+            bottom: 40px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 30px;
+            pointer-events: none;
+        }
+        
+        .control-btn {
+            width: 85px;
+            height: 85px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            display: flex;
+            justify-content: center; align-items: center;
+            color: #fff;
+            font-size: 40px;
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn:active {
+            background: rgba(251, 191, 36, 0.3);
+            border-color: #fbbf24;
+        }
+
+        canvas { display: block; background: #000; }
+        .hidden { display: none !important; }
+        
+        .stats-badge {
+            background: rgba(255,255,255,0.05);
+            padding: 8px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HUD -->
+    <div style="position:fixed; top:20px; width:100%; display:flex; justify-content:space-between; padding:0 25px; color:white; z-index:500; pointer-events:none;">
+        <div class="stats-badge"><span class="opacity-50 text-[10px] block uppercase tracking-tighter">Score</span><span id="s-val" class="text-xl font-black">0</span></div>
+        <div class="stats-badge text-right"><span class="opacity-50 text-[10px] block uppercase tracking-tighter">Record</span><span id="h-val" class="text-xl font-black text-yellow-400">0</span></div>
+    </div>
+
+    <!-- UI LAYER -->
+    <div id="ui-layer">
+        <!-- Start Screen -->
+        <div id="start-screen" class="glass-panel text-center clickable" onclick="startGame()">
+            <h1 class="text-4xl font-black italic mb-2 text-yellow-400 neon-glow">RACE MASTER</h1>
+            <p class="text-[10px] text-gray-400 uppercase tracking-[0.3em] mb-8 font-bold">Evolution Edition</p>
+            <div class="big-yellow-btn">ENGINE START</div>
+            <div class="mt-6 flex justify-center gap-4">
+                <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
+                <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" style="animation-delay: 0.2s"></div>
+                <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" style="animation-delay: 0.4s"></div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="glass-panel text-center hidden clickable" onclick="startGame()">
+            <h1 class="text-4xl font-black text-red-500 mb-2">WRECKED!</h1>
+            <div class="my-6 py-4 border-y border-white/10">
+                <p class="text-xs text-gray-500 uppercase mb-1">Total Distance</p>
+                <p class="text-5xl font-black" id="f-val">0</p>
+            </div>
+            <div class="big-yellow-btn">RE-IGNITE</div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div id="ingame-ui" class="move-controls hidden">
+        <div class="control-btn" id="l-btn">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </div>
+        <div class="control-btn" id="r-btn">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const charImg = new Image();
+    charImg.src = '18045.png';
+
+    // --- ENHANCED AUDIO SYSTEM ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSfx(freq, type, duration, vol=0.1) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = type;
+        o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        g.gain.setValueAtTime(vol, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(); o.stop(audioCtx.currentTime + duration);
+    }
+
+    function playCrashSfx() {
+        const duration = 0.8;
+        const g = audioCtx.createGain();
+        const b = audioCtx.createBuffer(1, audioCtx.sampleRate * duration, audioCtx.sampleRate);
+        const d = b.getChannelData(0);
+        for(let i=0; i<d.length; i++) d[i] = Math.random() * 2 - 1;
+        const s = audioCtx.createBufferSource();
+        s.buffer = b;
+        g.gain.setValueAtTime(0.4, audioCtx.currentTime);
+        g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
+        s.connect(g); g.connect(audioCtx.destination);
+        s.start();
+    }
+
+    // Engine Hum
+    let engineOsc = null;
+    function startEngine() {
+        if(engineOsc) return;
+        engineOsc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        engineOsc.type = 'sawtooth';
+        engineOsc.frequency.value = 50;
+        g.gain.value = 0.02;
+        engineOsc.connect(g);
+        g.connect(audioCtx.destination);
+        engineOsc.start();
+    }
+
+    function updateEnginePitch(speed) {
+        if(engineOsc) {
+            engineOsc.frequency.setTargetAtTime(40 + (speed * 10), audioCtx.currentTime, 0.1);
+        }
+    }
+
+    // --- GAME ENGINE ---
+    let state = 'MENU';
+    let score = 0;
+    let high = localStorage.getItem('rm_high_ultra') || 0;
+    document.getElementById('h-val').innerText = high;
+
+    const player = { lane: 1, x: 0, tx: 0, y: 0, w: 70, h: 130 };
+    let obstacles = [];
+    let speed = 9;
+    let frame = 0;
+
+    function resize() {
+        canvas.width = Math.min(window.innerWidth, 500);
+        canvas.height = window.innerHeight;
+        player.y = canvas.height - 240;
+        updateLane(true);
+    }
+    window.onresize = resize;
+    resize();
+
+    function updateLane(instant = false) {
+        const lw = canvas.width / 3;
+        player.tx = (player.lane * lw) + (lw/2) - (player.w/2);
+        if(instant) player.x = player.tx;
+    }
+
+    function startGame() {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        startEngine();
+        state = 'PLAY';
+        score = 0;
+        speed = 9;
+        obstacles = [];
+        player.lane = 1;
+        updateLane(true);
+        
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('game-over-screen').classList.add('hidden');
+        document.getElementById('ingame-ui').classList.remove('hidden');
+        document.getElementById('s-val').innerText = "0";
+        
+        requestAnimationFrame(loop);
+    }
+
+    function gameOver() {
+        state = 'MENU';
+        playCrashSfx();
+        if(engineOsc) { engineOsc.stop(); engineOsc = null; }
+        
+        document.getElementById('f-val').innerText = score;
+        if(score > high) {
+            high = score;
+            localStorage.setItem('rm_high_ultra', high);
+            document.getElementById('h-val').innerText = high;
+        }
+        document.getElementById('game-over-screen').classList.remove('hidden');
+        document.getElementById('ingame-ui').classList.add('hidden');
+    }
+
+    const goL = (e) => { if(e) e.stopPropagation(); if(state==='PLAY'){ player.lane = Math.max(0, player.lane-1); updateLane(); playSfx(220, 'square', 0.1, 0.05); } };
+    const goR = (e) => { if(e) e.stopPropagation(); if(state==='PLAY'){ player.lane = Math.min(2, player.lane+1); updateLane(); playSfx(330, 'square', 0.1, 0.05); } };
+
+    document.getElementById('l-btn').onpointerdown = goL;
+    document.getElementById('r-btn').onpointerdown = goR;
+    window.onkeydown = (e) => { if(e.key === 'ArrowLeft') goL(); if(e.key === 'ArrowRight') goR(); };
+
+    function drawPlayerCar(x, y, w, h) {
+        ctx.save();
+        
+        // Speed Blur Effect
+        if(frame % 2 === 0) {
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.1)';
+            ctx.fillRect(x + 5, y + h, w - 10, 30);
+        }
+
+        // Aerodynamic Body
+        const grad = ctx.createLinearGradient(x, y, x + w, y);
+        grad.addColorStop(0, '#f59e0b');
+        grad.addColorStop(0.5, '#fbbf24');
+        grad.addColorStop(1, '#f59e0b');
+        
+        ctx.fillStyle = grad;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = 'rgba(251, 191, 36, 0.4)';
+        
+        ctx.beginPath();
+        ctx.moveTo(x + w*0.1, y + h); 
+        ctx.lineTo(x, y + h*0.8);
+        ctx.bezierCurveTo(x, y + h*0.4, x + w*0.1, y + h*0.1, x + w*0.5, y);
+        ctx.bezierCurveTo(x + w*0.9, y + h*0.1, x + w, y + h*0.4, x + w, y + h*0.8);
+        ctx.lineTo(x + w*0.9, y + h);
+        ctx.closePath();
+        ctx.fill();
+
+        // Cockpit
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.roundRect(x + w*0.2, y + h*0.3, w*0.6, h*0.25, 8);
+        ctx.fill();
+
+        // Character Driver
+        try {
+            ctx.globalAlpha = 0.9;
+            ctx.drawImage(charImg, x + w*0.22, y + h*0.32, w*0.56, h*0.35);
+            ctx.globalAlpha = 1.0;
+        } catch(e){}
+
+        // Details
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillRect(x + w*0.15, y + h*0.2, 6, 2); // Headlight L
+        ctx.fillRect(x + w*0.85 - 6, y + h*0.2, 6, 2); // Headlight R
+
+        ctx.restore();
+    }
+
+    function loop() {
+        if(state !== 'PLAY') return;
+        ctx.fillStyle = '#050505';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        updateEnginePitch(speed);
+
+        // Road Effect
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([80, 80]);
+        ctx.lineDashOffset = -(frame * speed);
+        for(let i=1; i<3; i++) {
+            ctx.beginPath(); ctx.moveTo(i * (canvas.width/3), 0);
+            ctx.lineTo(i * (canvas.width/3), canvas.height); ctx.stroke();
+        }
+
+        // Side Glow
+        ctx.fillStyle = 'rgba(251,191,36,0.03)';
+        ctx.fillRect(0, 0, 10, canvas.height);
+        ctx.fillRect(canvas.width-10, 0, 10, canvas.height);
+
+        player.x += (player.tx - player.x) * 0.25;
+        drawPlayerCar(player.x, player.y, player.w, player.h);
+
+        // Traffic
+        for(let i=obstacles.length-1; i>=0; i--) {
+            let o = obstacles[i];
+            o.y += speed;
+            
+            // Draw Enemy Car
+            ctx.fillStyle = o.c;
+            ctx.beginPath(); ctx.roundRect(o.x, o.y, player.w*0.8, player.h*0.8, 12); ctx.fill();
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(o.x + 10, o.y + 15, player.w*0.8 - 20, 15);
+
+            // Collision
+            if(player.x + 8 < o.x + player.w*0.8 && player.x + player.w - 8 > o.x &&
+               player.y + 15 < o.y + player.h*0.8 && player.y + player.h - 15 > o.y) {
+                gameOver();
+            }
+
+            if(o.y > canvas.height) {
+                obstacles.splice(i, 1);
+                score++;
+                document.getElementById('s-val').innerText = score;
+                if(score % 5 === 0) {
+                    speed += 0.45;
+                    playSfx(800, 'sine', 0.2, 0.03); // Speed up chime
+                }
+            }
+        }
+
+        if(frame % 50 === 0) {
+            const l = Math.floor(Math.random()*3);
+            const lw = canvas.width/3;
+            obstacles.push({ 
+                x: (l*lw) + (lw/2) - (player.w*0.4), 
+                y: -180, 
+                c: `hsl(${Math.random()*360}, 60%, 45%)` 
+            });
+        }
+
+        frame++;
+        requestAnimationFrame(loop);
+    }
+
+    init();
+</script>
+</body>
+</html>
+
