@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minecraft: Nether Runner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Press Start 2P', cursive; touch-action: none; }
+        
+        #ui {
+            position: absolute;
+            top: 20px; left: 20px;
+            color: #fff;
+            text-shadow: 3px 3px #000;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .stat { margin-bottom: 8px; font-size: 10px; }
+        #score-val { color: #ffff55; font-size: 18px; }
+        #gold-val { color: #ffaa00; }
+        #level-val { color: #55ff55; }
+        #best-stats { color: #aaa; font-size: 8px; margin-top: 10px; }
+        
+        #overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            text-align: center;
+        }
+
+        .mc-button {
+            background: #7e7e7e;
+            border: 4px solid #000;
+            border-top-color: #dbdbdb;
+            border-left-color: #dbdbdb;
+            color: white;
+            padding: 18px 36px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: inset -4px -4px #404040;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            z-index: 50;
+            pointer-events: none;
+        }
+        .btn {
+            width: 70px; height: 70px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid #fff;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 22px;
+            pointer-events: auto;
+            user-select: none;
+        }
+        .action-btn { width: 110px; background: rgba(255, 100, 100, 0.4); font-size: 12px; }
+
+        #msg-box {
+            position: absolute;
+            top: 30%; width: 100%;
+            text-align: center;
+            color: #ffaa00;
+            font-size: 24px;
+            display: none;
+            z-index: 60;
+            text-shadow: 4px 4px #000;
+            pointer-events: none;
+        }
+
+        .dibu-brand { color: #55ffff; font-size: 10px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div class="stat">SCORE: <span id="score-val">0</span></div>
+    <div class="stat">GOLD: <span id="gold-val">0</span></div>
+    <div class="stat">LEVEL: <span id="level-val">1</span></div>
+    <div id="best-stats">
+        BEST SCORE: <span id="best-score-val">0</span><br>
+        BEST LEVEL: <span id="best-level-val">1</span>
+    </div>
+</div>
+
+<div id="msg-box">LEVEL UP!</div>
+
+<div id="overlay">
+    <div class="dibu-brand">MADE BY DIBUPLAYS</div>
+    <h1 style="color: #ff5555; font-size: 22px;">NETHER RUNNER</h1>
+    <p style="color: #fff; font-size: 8px;">Collect Coins & Survive the Nether!</p>
+    <button class="mc-button" id="startBtn">START GAME</button>
+</div>
+
+<div id="controls">
+    <div class="btn" id="left-btn">◀</div>
+    <div class="btn action-btn" id="jump-btn">JUMP</div>
+    <div class="btn action-btn" id="crouch-btn">CROUCH</div>
+    <div class="btn" id="right-btn">▶</div>
+</div>
+
+<script>
+let scene, camera, renderer, player, floor;
+let obstacles = [], coins = [], gameActive = false;
+let score = 0, gold = 0, level = 1;
+
+// Load persistent data
+let highScore = parseInt(localStorage.getItem('mc_nether_best_score')) || 0;
+let maxLevel = parseInt(localStorage.getItem('mc_nether_best_level')) || 1;
+
+let speed = 0.75, lane = 0;
+const LANE_W = 4;
+let isCrouching = false;
+let spawnTimer = 0;
+
+// Audio System
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSFX(freq, dur, type='sine', ramp=false) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    if(ramp) osc.frequency.exponentialRampToValueAtTime(freq*2, audioCtx.currentTime + dur);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + dur);
+}
+
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a0505);
+    scene.fog = new THREE.FogExp2(0x1a0505, 0.03);
+
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 7, 12);
+    camera.lookAt(0, 2, 0);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // Update UI with stored bests
+    document.getElementById('best-score-val').innerText = highScore;
+    document.getElementById('best-level-val').innerText = maxLevel;
+
+    scene.add(new THREE.AmbientLight(0xff4422, 0.5));
+    const sun = new THREE.PointLight(0xffaa00, 2, 100);
+    sun.position.set(0, 15, 10);
+    sun.castShadow = true;
+    scene.add(sun);
+
+    createSteve();
+    createFloor();
+    setupInputs();
+    animate();
+}
+
+function createSteve() {
+    player = new THREE.Group();
+    const mat = (c) => new THREE.MeshStandardMaterial({ color: c });
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat(0xd9bb9b));
+    head.position.y = 3.3;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 0.6), mat(0x00a8a8));
+    body.position.y = 2.05;
+    player.leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.5, 0.5), mat(0x3d3d8d));
+    player.leftLeg.position.set(-0.25, 0.75, 0);
+    player.rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.5, 0.5), mat(0x3d3d8d));
+    player.rightLeg.position.set(0.25, 0.75, 0);
+    player.add(head, body, player.leftLeg, player.rightLeg);
+    player.traverse(m => { if(m.isMesh) m.castShadow = true; });
+    scene.add(player);
+    player.velY = 0;
+}
+
+function createFloor() {
+    const geo = new THREE.PlaneGeometry(25, 2000);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x4a1a1a });
+    floor = new THREE.Mesh(geo, mat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+}
+
+function spawnObject() {
+    if(!gameActive) return;
+    const l = (Math.floor(Math.random()*3)-1) * LANE_W;
+    const type = Math.random();
+
+    if(type < 0.15) { // Barrier (Crouch)
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x888888 }));
+        wall.position.set(l, 4.2, -160);
+        wall.isWall = true;
+        scene.add(wall);
+        obstacles.push(wall);
+    } else if(type < 0.35) { // Block (Jump)
+        const block = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), new THREE.MeshStandardMaterial({ color: 0x1a002a }));
+        block.position.set(l, 1.5, -160);
+        block.isWall = false;
+        scene.add(block);
+        obstacles.push(block);
+    } else { // Coin
+        const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.2, 8), new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xaa8800 }));
+        coin.rotation.x = Math.PI/2;
+        coin.position.set(l, 1.5, -160);
+        scene.add(coin);
+        coins.push(coin);
+    }
+}
+
+function setupInputs() {
+    const move = (d) => { if(gameActive) lane = Math.max(-1, Math.min(1, lane + d)); };
+    const jump = () => { if(gameActive && player.position.y < 0.1 && !isCrouching) { player.velY = 0.38; playSFX(300, 0.15, 'sine', true); }};
+    const crouch = () => {
+        if(gameActive && !isCrouching && player.position.y < 0.1) {
+            isCrouching = true;
+            player.scale.y = 0.5;
+            playSFX(150, 0.1, 'square');
+            setTimeout(() => { isCrouching = false; player.scale.y = 1.0; }, 700);
+        }
+    };
+    document.getElementById('left-btn').onpointerdown = (e) => { e.preventDefault(); move(-1); };
+    document.getElementById('right-btn').onpointerdown = (e) => { e.preventDefault(); move(1); };
+    document.getElementById('jump-btn').onpointerdown = (e) => { e.preventDefault(); jump(); };
+    document.getElementById('crouch-btn').onpointerdown = (e) => { e.preventDefault(); crouch(); };
+}
+
+function showLevelMsg() {
+    const box = document.getElementById('msg-box');
+    box.style.display = 'block';
+    setTimeout(() => { box.style.display = 'none'; }, 2000);
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    if(gameActive) {
+        score++;
+        document.getElementById('score-val').innerText = score;
+        document.getElementById('gold-val').innerText = gold;
+        document.getElementById('level-val').innerText = level;
+
+        if(score > level * 500) {
+            level++;
+            speed += 0.08;
+            playSFX(500, 0.3, 'sine', true);
+            showLevelMsg();
+        }
+
+        player.position.x += (lane * LANE_W - player.position.x) * 0.2;
+        player.position.y += player.velY;
+        if(player.position.y > 0) player.velY -= 0.02;
+        else { player.position.y = 0; player.velY = 0; }
+
+        const t = Date.now() * 0.015;
+        if(player.position.y < 0.1 && !isCrouching) {
+            player.leftLeg.rotation.x = Math.sin(t) * 0.8;
+            player.rightLeg.rotation.x = -Math.sin(t) * 0.8;
+        }
+
+        floor.position.z += speed;
+        if(floor.position.z > 50) floor.position.z = 0;
+
+        for(let i=obstacles.length-1; i>=0; i--) {
+            const o = obstacles[i];
+            o.position.z += speed;
+            if(Math.abs(player.position.x - o.position.x) < 2 && Math.abs(player.position.z - o.position.z) < 1.5) {
+                if(o.isWall) { if(!isCrouching) gameOver(); }
+                else { if(player.position.y < 2) gameOver(); }
+            }
+            if(o.position.z > 20) { scene.remove(o); obstacles.splice(i,1); }
+        }
+
+        for(let i=coins.length-1; i>=0; i--) {
+            const c = coins[i];
+            c.position.z += speed;
+            c.rotation.z += 0.1;
+            if(Math.abs(player.position.x - c.position.x) < 1.5 && Math.abs(player.position.z - c.position.z) < 1.5) {
+                gold += 10; score += 50;
+                playSFX(800, 0.1, 'sine');
+                scene.remove(c); coins.splice(i,1);
+            }
+            if(c.position.z > 20) { scene.remove(c); coins.splice(i,1); }
+        }
+
+        spawnTimer++;
+        if(spawnTimer > Math.max(15, 45 - level)) {
+            spawnObject();
+            spawnTimer = 0;
+        }
+        camera.position.x = player.position.x * 0.4;
+        camera.lookAt(player.position.x * 0.8, 2, 0);
+    }
+    renderer.render(scene, camera);
+}
+
+function gameOver() {
+    gameActive = false;
+    playSFX(100, 0.4, 'sawtooth');
+    
+    // Check and save records
+    if(score > highScore) {
+        highScore = score;
+        localStorage.setItem('mc_nether_best_score', highScore);
+        document.getElementById('best-score-val').innerText = highScore;
+    }
+    
+    if(level > maxLevel) {
+        maxLevel = level;
+        localStorage.setItem('mc_nether_best_level', maxLevel);
+        document.getElementById('best-level-val').innerText = maxLevel;
+    }
+
+    document.getElementById('overlay').style.display = 'flex';
+    document.getElementById('startBtn').innerText = 'RESPAWN';
+}
+
+document.getElementById('startBtn').onclick = () => {
+    obstacles.forEach(o => scene.remove(o));
+    coins.forEach(c => scene.remove(c));
+    obstacles = []; coins = [];
+    score = 0; gold = 0; level = 1; speed = 0.75; lane = 0;
+    player.position.set(0,0,0);
+    gameActive = true;
+    document.getElementById('overlay').style.display = 'none';
+};
+
+init();
+</script>
+</body>
+</html>
+
