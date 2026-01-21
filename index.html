@@ -3,384 +3,350 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Race Master - Ultra Edition</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Minecraft: Nether Runner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            overflow: hidden; background-color: #050505;
-            user-select: none; -webkit-user-select: none;
-            touch-action: none; font-family: 'Orbitron', sans-serif;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         
-        #ui-layer {
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Press Start 2P', cursive; touch-action: none; }
+        
+        #ui {
+            position: absolute;
+            top: 20px; left: 20px;
+            color: #fff;
+            text-shadow: 3px 3px #000;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .stat { margin-bottom: 8px; font-size: 10px; }
+        #score-val { color: #ffff55; font-size: 18px; }
+        #gold-val { color: #ffaa00; }
+        #level-val { color: #55ff55; }
+        #best-stats { color: #aaa; font-size: 8px; margin-top: 10px; }
+        
+        #overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            z-index: 9999;
-            pointer-events: none;
-        }
-        .clickable { pointer-events: auto; cursor: pointer; }
-        
-        .glass-panel {
-            background: rgba(15, 15, 25, 0.85);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 40px;
-            padding: 40px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            width: 85%;
-            max-width: 400px;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            text-align: center;
         }
 
-        .neon-glow {
-            text-shadow: 0 0 10px rgba(251, 191, 36, 0.8), 0 0 20px rgba(251, 191, 36, 0.4);
+        .mc-button {
+            background: #7e7e7e;
+            border: 4px solid #000;
+            border-top-color: #dbdbdb;
+            border-left-color: #dbdbdb;
+            color: white;
+            padding: 18px 36px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: inset -4px -4px #404040;
         }
-        
-        .big-yellow-btn {
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-            color: #000;
-            padding: 20px 40px;
-            border-radius: 20px;
-            font-size: 24px;
-            font-weight: 900;
-            border: none;
-            box-shadow: 0 10px 0 #b45309, 0 0 20px rgba(245, 158, 11, 0.4);
-            transition: all 0.1s;
-            width: 100%;
-        }
-        
-        .big-yellow-btn:active {
-            transform: translateY(6px);
-            box-shadow: 0 4px 0 #b45309, 0 0 10px rgba(245, 158, 11, 0.2);
-        }
-        
-        .move-controls {
+
+        #controls {
             position: absolute;
-            bottom: 40px;
+            bottom: 30px;
             width: 100%;
             display: flex;
-            justify-content: space-between;
-            padding: 0 30px;
+            justify-content: center;
+            gap: 12px;
+            z-index: 50;
             pointer-events: none;
         }
-        
-        .control-btn {
-            width: 85px;
-            height: 85px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 24px;
-            display: flex;
-            justify-content: center; align-items: center;
-            color: #fff;
-            font-size: 40px;
-            pointer-events: auto;
-            backdrop-filter: blur(10px);
-        }
-
-        .control-btn:active {
-            background: rgba(251, 191, 36, 0.3);
-            border-color: #fbbf24;
-        }
-
-        canvas { display: block; background: #000; }
-        .hidden { display: none !important; }
-        
-        .stats-badge {
-            background: rgba(255,255,255,0.05);
-            padding: 8px 16px;
+        .btn {
+            width: 70px; height: 70px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid #fff;
             border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 22px;
+            pointer-events: auto;
+            user-select: none;
         }
+        .action-btn { width: 110px; background: rgba(255, 100, 100, 0.4); font-size: 12px; }
+
+        #msg-box {
+            position: absolute;
+            top: 30%; width: 100%;
+            text-align: center;
+            color: #ffaa00;
+            font-size: 24px;
+            display: none;
+            z-index: 60;
+            text-shadow: 4px 4px #000;
+            pointer-events: none;
+        }
+
+        .dibu-brand { color: #55ffff; font-size: 10px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
-    <!-- HUD -->
-    <div style="position:fixed; top:20px; width:100%; display:flex; justify-content:space-between; padding:0 25px; color:white; z-index:500; pointer-events:none;">
-        <div class="stats-badge"><span class="opacity-50 text-[10px] block uppercase tracking-tighter">Score</span><span id="s-val" class="text-xl font-black">0</span></div>
-        <div class="stats-badge text-right"><span class="opacity-50 text-[10px] block uppercase tracking-tighter">Record</span><span id="h-val" class="text-xl font-black text-yellow-400">0</span></div>
+<div id="ui">
+    <div class="stat">SCORE: <span id="score-val">0</span></div>
+    <div class="stat">GOLD: <span id="gold-val">0</span></div>
+    <div class="stat">LEVEL: <span id="level-val">1</span></div>
+    <div id="best-stats">
+        BEST SCORE: <span id="best-score-val">0</span><br>
+        BEST LEVEL: <span id="best-level-val">1</span>
     </div>
+</div>
 
-    <!-- UI LAYER -->
-    <div id="ui-layer">
-        <!-- Start Screen -->
-        <div id="start-screen" class="glass-panel text-center clickable" onclick="startGame()">
-            <h1 class="text-4xl font-black italic mb-2 text-yellow-400 neon-glow">RACE MASTER</h1>
-            <p class="text-[10px] text-gray-400 uppercase tracking-[0.3em] mb-8 font-bold">Evolution Edition</p>
-            <div class="big-yellow-btn">ENGINE START</div>
-            <div class="mt-6 flex justify-center gap-4">
-                <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
-                <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" style="animation-delay: 0.2s"></div>
-                <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" style="animation-delay: 0.4s"></div>
-            </div>
-        </div>
+<div id="msg-box">LEVEL UP!</div>
 
-        <!-- Game Over Screen -->
-        <div id="game-over-screen" class="glass-panel text-center hidden clickable" onclick="startGame()">
-            <h1 class="text-4xl font-black text-red-500 mb-2">WRECKED!</h1>
-            <div class="my-6 py-4 border-y border-white/10">
-                <p class="text-xs text-gray-500 uppercase mb-1">Total Distance</p>
-                <p class="text-5xl font-black" id="f-val">0</p>
-            </div>
-            <div class="big-yellow-btn">RE-IGNITE</div>
-        </div>
-    </div>
+<div id="overlay">
+    <div class="dibu-brand">MADE BY DIBUPLAYS</div>
+    <h1 style="color: #ff5555; font-size: 22px;">NETHER RUNNER</h1>
+    <p style="color: #fff; font-size: 8px;">Collect Coins & Survive the Nether!</p>
+    <button class="mc-button" id="startBtn">START GAME</button>
+</div>
 
-    <!-- Controls -->
-    <div id="ingame-ui" class="move-controls hidden">
-        <div class="control-btn" id="l-btn">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-        </div>
-        <div class="control-btn" id="r-btn">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-        </div>
-    </div>
-
-    <canvas id="gameCanvas"></canvas>
+<div id="controls">
+    <div class="btn" id="left-btn">◀</div>
+    <div class="btn action-btn" id="jump-btn">JUMP</div>
+    <div class="btn action-btn" id="crouch-btn">CROUCH</div>
+    <div class="btn" id="right-btn">▶</div>
+</div>
 
 <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const charImg = new Image();
-    charImg.src = '18045.png';
+let scene, camera, renderer, player, floor;
+let obstacles = [], coins = [], gameActive = false;
+let score = 0, gold = 0, level = 1;
 
-    // --- ENHANCED AUDIO SYSTEM ---
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    function playSfx(freq, type, duration, vol=0.1) {
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        const o = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        o.type = type;
-        o.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        g.gain.setValueAtTime(vol, audioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-        o.connect(g); g.connect(audioCtx.destination);
-        o.start(); o.stop(audioCtx.currentTime + duration);
+// Load persistent data
+let highScore = parseInt(localStorage.getItem('mc_nether_best_score')) || 0;
+let maxLevel = parseInt(localStorage.getItem('mc_nether_best_level')) || 1;
+
+let speed = 0.75, lane = 0;
+const LANE_W = 4;
+let isCrouching = false;
+let spawnTimer = 0;
+
+// Audio System
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSFX(freq, dur, type='sine', ramp=false) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    if(ramp) osc.frequency.exponentialRampToValueAtTime(freq*2, audioCtx.currentTime + dur);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + dur);
+}
+
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a0505);
+    scene.fog = new THREE.FogExp2(0x1a0505, 0.03);
+
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 7, 12);
+    camera.lookAt(0, 2, 0);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // Update UI with stored bests
+    document.getElementById('best-score-val').innerText = highScore;
+    document.getElementById('best-level-val').innerText = maxLevel;
+
+    scene.add(new THREE.AmbientLight(0xff4422, 0.5));
+    const sun = new THREE.PointLight(0xffaa00, 2, 100);
+    sun.position.set(0, 15, 10);
+    sun.castShadow = true;
+    scene.add(sun);
+
+    createSteve();
+    createFloor();
+    setupInputs();
+    animate();
+}
+
+function createSteve() {
+    player = new THREE.Group();
+    const mat = (c) => new THREE.MeshStandardMaterial({ color: c });
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat(0xd9bb9b));
+    head.position.y = 3.3;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 0.6), mat(0x00a8a8));
+    body.position.y = 2.05;
+    player.leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.5, 0.5), mat(0x3d3d8d));
+    player.leftLeg.position.set(-0.25, 0.75, 0);
+    player.rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.5, 0.5), mat(0x3d3d8d));
+    player.rightLeg.position.set(0.25, 0.75, 0);
+    player.add(head, body, player.leftLeg, player.rightLeg);
+    player.traverse(m => { if(m.isMesh) m.castShadow = true; });
+    scene.add(player);
+    player.velY = 0;
+}
+
+function createFloor() {
+    const geo = new THREE.PlaneGeometry(25, 2000);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x4a1a1a });
+    floor = new THREE.Mesh(geo, mat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+}
+
+function spawnObject() {
+    if(!gameActive) return;
+    const l = (Math.floor(Math.random()*3)-1) * LANE_W;
+    const type = Math.random();
+
+    if(type < 0.15) { // Barrier (Crouch)
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x888888 }));
+        wall.position.set(l, 4.2, -160);
+        wall.isWall = true;
+        scene.add(wall);
+        obstacles.push(wall);
+    } else if(type < 0.35) { // Block (Jump)
+        const block = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), new THREE.MeshStandardMaterial({ color: 0x1a002a }));
+        block.position.set(l, 1.5, -160);
+        block.isWall = false;
+        scene.add(block);
+        obstacles.push(block);
+    } else { // Coin
+        const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.2, 8), new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xaa8800 }));
+        coin.rotation.x = Math.PI/2;
+        coin.position.set(l, 1.5, -160);
+        scene.add(coin);
+        coins.push(coin);
     }
+}
 
-    function playCrashSfx() {
-        const duration = 0.8;
-        const g = audioCtx.createGain();
-        const b = audioCtx.createBuffer(1, audioCtx.sampleRate * duration, audioCtx.sampleRate);
-        const d = b.getChannelData(0);
-        for(let i=0; i<d.length; i++) d[i] = Math.random() * 2 - 1;
-        const s = audioCtx.createBufferSource();
-        s.buffer = b;
-        g.gain.setValueAtTime(0.4, audioCtx.currentTime);
-        g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
-        s.connect(g); g.connect(audioCtx.destination);
-        s.start();
-    }
-
-    // Engine Hum
-    let engineOsc = null;
-    function startEngine() {
-        if(engineOsc) return;
-        engineOsc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        engineOsc.type = 'sawtooth';
-        engineOsc.frequency.value = 50;
-        g.gain.value = 0.02;
-        engineOsc.connect(g);
-        g.connect(audioCtx.destination);
-        engineOsc.start();
-    }
-
-    function updateEnginePitch(speed) {
-        if(engineOsc) {
-            engineOsc.frequency.setTargetAtTime(40 + (speed * 10), audioCtx.currentTime, 0.1);
+function setupInputs() {
+    const move = (d) => { if(gameActive) lane = Math.max(-1, Math.min(1, lane + d)); };
+    const jump = () => { if(gameActive && player.position.y < 0.1 && !isCrouching) { player.velY = 0.38; playSFX(300, 0.15, 'sine', true); }};
+    const crouch = () => {
+        if(gameActive && !isCrouching && player.position.y < 0.1) {
+            isCrouching = true;
+            player.scale.y = 0.5;
+            playSFX(150, 0.1, 'square');
+            setTimeout(() => { isCrouching = false; player.scale.y = 1.0; }, 700);
         }
-    }
+    };
+    document.getElementById('left-btn').onpointerdown = (e) => { e.preventDefault(); move(-1); };
+    document.getElementById('right-btn').onpointerdown = (e) => { e.preventDefault(); move(1); };
+    document.getElementById('jump-btn').onpointerdown = (e) => { e.preventDefault(); jump(); };
+    document.getElementById('crouch-btn').onpointerdown = (e) => { e.preventDefault(); crouch(); };
+}
 
-    // --- GAME ENGINE ---
-    let state = 'MENU';
-    let score = 0;
-    let high = localStorage.getItem('rm_high_ultra') || 0;
-    document.getElementById('h-val').innerText = high;
+function showLevelMsg() {
+    const box = document.getElementById('msg-box');
+    box.style.display = 'block';
+    setTimeout(() => { box.style.display = 'none'; }, 2000);
+}
 
-    const player = { lane: 1, x: 0, tx: 0, y: 0, w: 70, h: 130 };
-    let obstacles = [];
-    let speed = 9;
-    let frame = 0;
+function animate() {
+    requestAnimationFrame(animate);
+    if(gameActive) {
+        score++;
+        document.getElementById('score-val').innerText = score;
+        document.getElementById('gold-val').innerText = gold;
+        document.getElementById('level-val').innerText = level;
 
-    function resize() {
-        canvas.width = Math.min(window.innerWidth, 500);
-        canvas.height = window.innerHeight;
-        player.y = canvas.height - 240;
-        updateLane(true);
-    }
-    window.onresize = resize;
-    resize();
-
-    function updateLane(instant = false) {
-        const lw = canvas.width / 3;
-        player.tx = (player.lane * lw) + (lw/2) - (player.w/2);
-        if(instant) player.x = player.tx;
-    }
-
-    function startGame() {
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        startEngine();
-        state = 'PLAY';
-        score = 0;
-        speed = 9;
-        obstacles = [];
-        player.lane = 1;
-        updateLane(true);
-        
-        document.getElementById('start-screen').classList.add('hidden');
-        document.getElementById('game-over-screen').classList.add('hidden');
-        document.getElementById('ingame-ui').classList.remove('hidden');
-        document.getElementById('s-val').innerText = "0";
-        
-        requestAnimationFrame(loop);
-    }
-
-    function gameOver() {
-        state = 'MENU';
-        playCrashSfx();
-        if(engineOsc) { engineOsc.stop(); engineOsc = null; }
-        
-        document.getElementById('f-val').innerText = score;
-        if(score > high) {
-            high = score;
-            localStorage.setItem('rm_high_ultra', high);
-            document.getElementById('h-val').innerText = high;
-        }
-        document.getElementById('game-over-screen').classList.remove('hidden');
-        document.getElementById('ingame-ui').classList.add('hidden');
-    }
-
-    const goL = (e) => { if(e) e.stopPropagation(); if(state==='PLAY'){ player.lane = Math.max(0, player.lane-1); updateLane(); playSfx(220, 'square', 0.1, 0.05); } };
-    const goR = (e) => { if(e) e.stopPropagation(); if(state==='PLAY'){ player.lane = Math.min(2, player.lane+1); updateLane(); playSfx(330, 'square', 0.1, 0.05); } };
-
-    document.getElementById('l-btn').onpointerdown = goL;
-    document.getElementById('r-btn').onpointerdown = goR;
-    window.onkeydown = (e) => { if(e.key === 'ArrowLeft') goL(); if(e.key === 'ArrowRight') goR(); };
-
-    function drawPlayerCar(x, y, w, h) {
-        ctx.save();
-        
-        // Speed Blur Effect
-        if(frame % 2 === 0) {
-            ctx.fillStyle = 'rgba(251, 191, 36, 0.1)';
-            ctx.fillRect(x + 5, y + h, w - 10, 30);
-        }
-
-        // Aerodynamic Body
-        const grad = ctx.createLinearGradient(x, y, x + w, y);
-        grad.addColorStop(0, '#f59e0b');
-        grad.addColorStop(0.5, '#fbbf24');
-        grad.addColorStop(1, '#f59e0b');
-        
-        ctx.fillStyle = grad;
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = 'rgba(251, 191, 36, 0.4)';
-        
-        ctx.beginPath();
-        ctx.moveTo(x + w*0.1, y + h); 
-        ctx.lineTo(x, y + h*0.8);
-        ctx.bezierCurveTo(x, y + h*0.4, x + w*0.1, y + h*0.1, x + w*0.5, y);
-        ctx.bezierCurveTo(x + w*0.9, y + h*0.1, x + w, y + h*0.4, x + w, y + h*0.8);
-        ctx.lineTo(x + w*0.9, y + h);
-        ctx.closePath();
-        ctx.fill();
-
-        // Cockpit
-        ctx.fillStyle = '#0f172a';
-        ctx.beginPath();
-        ctx.roundRect(x + w*0.2, y + h*0.3, w*0.6, h*0.25, 8);
-        ctx.fill();
-
-        // Character Driver
-        try {
-            ctx.globalAlpha = 0.9;
-            ctx.drawImage(charImg, x + w*0.22, y + h*0.32, w*0.56, h*0.35);
-            ctx.globalAlpha = 1.0;
-        } catch(e){}
-
-        // Details
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        ctx.fillRect(x + w*0.15, y + h*0.2, 6, 2); // Headlight L
-        ctx.fillRect(x + w*0.85 - 6, y + h*0.2, 6, 2); // Headlight R
-
-        ctx.restore();
-    }
-
-    function loop() {
-        if(state !== 'PLAY') return;
-        ctx.fillStyle = '#050505';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        updateEnginePitch(speed);
-
-        // Road Effect
-        ctx.strokeStyle = '#1a1a1a';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([80, 80]);
-        ctx.lineDashOffset = -(frame * speed);
-        for(let i=1; i<3; i++) {
-            ctx.beginPath(); ctx.moveTo(i * (canvas.width/3), 0);
-            ctx.lineTo(i * (canvas.width/3), canvas.height); ctx.stroke();
+        if(score > level * 500) {
+            level++;
+            speed += 0.08;
+            playSFX(500, 0.3, 'sine', true);
+            showLevelMsg();
         }
 
-        // Side Glow
-        ctx.fillStyle = 'rgba(251,191,36,0.03)';
-        ctx.fillRect(0, 0, 10, canvas.height);
-        ctx.fillRect(canvas.width-10, 0, 10, canvas.height);
+        player.position.x += (lane * LANE_W - player.position.x) * 0.2;
+        player.position.y += player.velY;
+        if(player.position.y > 0) player.velY -= 0.02;
+        else { player.position.y = 0; player.velY = 0; }
 
-        player.x += (player.tx - player.x) * 0.25;
-        drawPlayerCar(player.x, player.y, player.w, player.h);
+        const t = Date.now() * 0.015;
+        if(player.position.y < 0.1 && !isCrouching) {
+            player.leftLeg.rotation.x = Math.sin(t) * 0.8;
+            player.rightLeg.rotation.x = -Math.sin(t) * 0.8;
+        }
 
-        // Traffic
+        floor.position.z += speed;
+        if(floor.position.z > 50) floor.position.z = 0;
+
         for(let i=obstacles.length-1; i>=0; i--) {
-            let o = obstacles[i];
-            o.y += speed;
-            
-            // Draw Enemy Car
-            ctx.fillStyle = o.c;
-            ctx.beginPath(); ctx.roundRect(o.x, o.y, player.w*0.8, player.h*0.8, 12); ctx.fill();
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.fillRect(o.x + 10, o.y + 15, player.w*0.8 - 20, 15);
-
-            // Collision
-            if(player.x + 8 < o.x + player.w*0.8 && player.x + player.w - 8 > o.x &&
-               player.y + 15 < o.y + player.h*0.8 && player.y + player.h - 15 > o.y) {
-                gameOver();
+            const o = obstacles[i];
+            o.position.z += speed;
+            if(Math.abs(player.position.x - o.position.x) < 2 && Math.abs(player.position.z - o.position.z) < 1.5) {
+                if(o.isWall) { if(!isCrouching) gameOver(); }
+                else { if(player.position.y < 2) gameOver(); }
             }
-
-            if(o.y > canvas.height) {
-                obstacles.splice(i, 1);
-                score++;
-                document.getElementById('s-val').innerText = score;
-                if(score % 5 === 0) {
-                    speed += 0.45;
-                    playSfx(800, 'sine', 0.2, 0.03); // Speed up chime
-                }
-            }
+            if(o.position.z > 20) { scene.remove(o); obstacles.splice(i,1); }
         }
 
-        if(frame % 50 === 0) {
-            const l = Math.floor(Math.random()*3);
-            const lw = canvas.width/3;
-            obstacles.push({ 
-                x: (l*lw) + (lw/2) - (player.w*0.4), 
-                y: -180, 
-                c: `hsl(${Math.random()*360}, 60%, 45%)` 
-            });
+        for(let i=coins.length-1; i>=0; i--) {
+            const c = coins[i];
+            c.position.z += speed;
+            c.rotation.z += 0.1;
+            if(Math.abs(player.position.x - c.position.x) < 1.5 && Math.abs(player.position.z - c.position.z) < 1.5) {
+                gold += 10; score += 50;
+                playSFX(800, 0.1, 'sine');
+                scene.remove(c); coins.splice(i,1);
+            }
+            if(c.position.z > 20) { scene.remove(c); coins.splice(i,1); }
         }
 
-        frame++;
-        requestAnimationFrame(loop);
+        spawnTimer++;
+        if(spawnTimer > Math.max(15, 45 - level)) {
+            spawnObject();
+            spawnTimer = 0;
+        }
+        camera.position.x = player.position.x * 0.4;
+        camera.lookAt(player.position.x * 0.8, 2, 0);
+    }
+    renderer.render(scene, camera);
+}
+
+function gameOver() {
+    gameActive = false;
+    playSFX(100, 0.4, 'sawtooth');
+    
+    // Check and save records
+    if(score > highScore) {
+        highScore = score;
+        localStorage.setItem('mc_nether_best_score', highScore);
+        document.getElementById('best-score-val').innerText = highScore;
+    }
+    
+    if(level > maxLevel) {
+        maxLevel = level;
+        localStorage.setItem('mc_nether_best_level', maxLevel);
+        document.getElementById('best-level-val').innerText = maxLevel;
     }
 
-    init();
+    document.getElementById('overlay').style.display = 'flex';
+    document.getElementById('startBtn').innerText = 'RESPAWN';
+}
+
+document.getElementById('startBtn').onclick = () => {
+    obstacles.forEach(o => scene.remove(o));
+    coins.forEach(c => scene.remove(c));
+    obstacles = []; coins = [];
+    score = 0; gold = 0; level = 1; speed = 0.75; lane = 0;
+    player.position.set(0,0,0);
+    gameActive = true;
+    document.getElementById('overlay').style.display = 'none';
+};
+
+init();
 </script>
 </body>
 </html>
